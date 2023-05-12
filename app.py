@@ -52,7 +52,7 @@ def recommend_item():
     #create a data frame of this dataset
     dataset_df=pd.DataFrame(dataset)
     dataset_df.fillna("Not Seen Yet",inplace=True)
-    dataset_df
+    # dataset_df
 
     # custom function to create unique set of products
 
@@ -130,8 +130,6 @@ def recommend_item():
         rankings.sort(reverse=True)
         return rankings
 
-
-    print("Enter the target person")
     tp = data.get('customerId')
     if tp in dataset.keys():
         recommended_items=recommendation_phase(tp)
@@ -139,12 +137,16 @@ def recommend_item():
             print("Recommendation!!!")
             recommended_products_names=[]
             for w,m in recommended_items:
-                recommended_products_names.append(m)
+                if w!=0:
+                    recommended_products_names.append(m)
             recommended_products_names_json=jsonify(recommended_products_names)
             recommended_products_names_json.headers.add('Access-Control-Allow-Origin', '*')
             return recommended_products_names_json
+        else:
+            return jsonify([])
     else:
         print("Person not found in the dataset")
-        return "Person not found in the dataset"
+        return jsonify([])
+
         
 app.run()
