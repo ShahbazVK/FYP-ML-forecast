@@ -44,121 +44,107 @@ def fypPrediction():
 
     return outputs
     
+@app.route('/item-recommender', methods=['POST'])
+def recommend_item():
+    data = request.json
+    dataset=data.get('dataset')
+
+    #create a data frame of this dataset
+    dataset_df=pd.DataFrame(dataset)
+    dataset_df.fillna("Not Seen Yet",inplace=True)
+    dataset_df
+
+    # custom function to create unique set of products
+
+    def unique_items():
+        unique_items_list = []
+        for person in dataset.keys():
+            for items in dataset[person]:
+                unique_items_list.append(items)
+        s=set(unique_items_list)
+        unique_items_list=list(s)
+        return unique_items_list
+
+    unique_items()
+
+    # custom function to implement cosine similarity between two items
+
+    def item_similarity(item1,item2):
+        both_rated = {}
+        for person in dataset.keys():
+            if item1 in dataset[person] and item2 in dataset[person]:
+                both_rated[person] = [dataset[person][item1],dataset[person][item2]]
+
+        number_of_ratings = len(both_rated)
+        if number_of_ratings == 0:
+            return 0
+
+        item1_ratings = [[dataset[k][item1] for k,v in both_rated.items() if item1 in dataset[k] and item2 in dataset[k]]]
+        item2_ratings = [[dataset[k][item2] for k, v in both_rated.items() if item1 in dataset[k] and item2 in dataset[k]]]
+        cs = cosine_similarity(item1_ratings,item2_ratings)
+        return cs[0][0]
+
+    #custom function to check most similar items
+
+    def most_similar_items(target_item):
+        un_lst=unique_items()
+        scores = [(item_similarity(target_item,other_item),target_item+" --> "+other_item) for other_item in un_lst if other_item!=target_item]
+        scores.sort(reverse=True)
+        return scores
+
+    #custom function to filter the seen products and unseen products of the target user
+
+    def target_products_to_users(target_person):
+        target_person_products_list = []
+        unique_list =unique_items()
+        for products in dataset[target_person]:
+            target_person_products_list.append(products)
+
+        s=set(unique_list)
+        recommended_products=list(s.difference(target_person_products_list))
+        a = len(recommended_products)
+        if a == 0:
+            return 0
+        return recommended_products,target_person_products_list
+
+    def recommendation_phase(target_person):
+        if target_products_to_users(target_person=target_person) == 0:
+            print(target_person, "has bought the products")
+            return -1
+        unseen_products,seen_products=target_products_to_users(target_person=target_person)
+        seen_ratings = [[dataset[target_person][products],products] for products in dataset[target_person]]
+        weighted_avg,weighted_sim = 0,0
+        rankings =[]
+        for i in unseen_products:
+            weighted_avg,weighted_sim = 0,0
+            for rate,movie in seen_ratings:
+                item_sim=item_similarity(i,movie)
+                weighted_avg +=(item_sim*rate)
+                weighted_sim +=item_sim
+            if (weighted_sim!=0):
+                weighted_rank=weighted_avg/weighted_sim
+            else:
+                weighted_rank=0
+            rankings.append([weighted_rank,i])
+
+        rankings.sort(reverse=True)
+        return rankings
+
+
+    print("Enter the target person")
+    tp = data.get('customerId')
+    if tp in dataset.keys():
+        recommended_items=recommendation_phase(tp)
+        if recommended_items != -1:
+            print("Recommendation!!!")
+            recommended_products_names=[]
+            for w,m in recommended_items:
+                recommended_products_names.append(m)
+            recommended_products_names_json=jsonify(recommended_products_names)
+            recommended_products_names_json.headers.add('Access-Control-Allow-Origin', '*')
+            return recommended_products_names_json
+    else:
+        print("Person not found in the dataset")
+        return "Person not found in the dataset"
+        
 app.run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # coding: utf-8
-
-# import pandas as pd
-# from sklearn.model_selection import train_test_split
-# from sklearn.ensemble import RandomForestClassifier 
-# from sklearn import metrics
-# from flask import Flask, request, render_template,jsonify
-# from flask_cors import CORS
-
-
-# app = Flask("__name__")
-# cors = CORS(app, resources={r"/*": {"origins": "*"}})
-# # q = ""
-
-# # @app.route("/")
-# # def loadPage():
-# 	# return render_template('home.html', query="")
-
-
-
-# @app.route("/result", methods=['POST'])
-# def cancerPrediction():
-#     print("HEYYYYY1")
-#     dataset_url = "https://raw.githubusercontent.com/apogiatzis/breast-cancer-azure-ml-notebook/master/breast-cancer-data.csv"
-#     df = pd.read_csv(dataset_url)
-#     data = request.get_json()
-#     print(data)
-#     inputQuery1=data['query1']
-#     inputQuery2=data['query2']
-#     inputQuery3=data['query3']
-#     inputQuery4=data['query4']
-#     inputQuery5=data['query5']
-
-#     df['diagnosis']=df['diagnosis'].map({'M':1,'B':0})
-
-#     train, test = train_test_split(df, test_size = 0.2)
-
-#     features = ['texture_mean','perimeter_mean','smoothness_mean','compactness_mean','symmetry_mean']
-
-#     train_X = train[features]
-#     train_y=train.diagnosis
-    
-#     test_X= test[features]
-#     test_y =test.diagnosis
-
-#     model=RandomForestClassifier(n_estimators=100, n_jobs=-1)
-#     model.fit(train_X,train_y)
-
-#     prediction=model.predict(test_X)
-#     metrics.accuracy_score(prediction,test_y)
-#     data = [[inputQuery1, inputQuery2, inputQuery3, inputQuery4, inputQuery5]]
-#     #print('data is: ')
-#     #print(data)
-#     #016.14, 74.00, 0.01968, 0.05914, 0.1619
-    
-#     # Create the pandas DataFrame 
-#     new_df = pd.DataFrame(data, columns = ['texture_mean', 'perimeter_mean', 'smoothness_mean', 'compactness_mean', 'symmetry_mean'])
-#     single = model.predict(new_df)
-#     probability = model.predict_proba(new_df)[:,1]
-#     print("probability",probability)
-#     if single==1:
-#         output1 = "The patient is diagnosed with Breast Cancer"
-#         output2 = "Confidence: {}".format(probability*100)
-#     else:
-#         output1 = "The patient is not diagnosed with Breast Cancer"
-#         output2 = ""
-    
-#     # return jsonify(output1,output2)
-#     # return render_template('home.html', output1=output1, output2=output2,)
-#     # return jsonify(incomes)
-#     # print(jsonify(output1))
-#     # print(output1)
-#     outputs={'output1':output1,'output2':output2}
-#     outputs=jsonify(outputs)
-#     outputs.headers.add('Access-Control-Allow-Origin', '*')
-
-#     return outputs
-    
-# @app.route("/getrequest", )
-# def getRequest():
-#     # Model starts here
-#     # print("HELLLLOOO")
-#     # Model ends here
-#     incomes = [
-#     { 'description': 'salary', 'amount': 5000 }
-#     ]
-#     return jsonify(incomes)
-#     # return render_template('home.html', data="HELLLOOOO",)
-# app.run()
-
