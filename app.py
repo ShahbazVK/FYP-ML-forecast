@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore")
 from flask import Flask, request, render_template,jsonify
 from flask_cors import CORS
 import numpy as np
-
+from waitress import serve
 
 app = Flask("__name__")
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
@@ -150,3 +150,5 @@ def recommend_item():
 
         
 app.run()
+
+serve(app, host="0.0.0.0", port=8080)
