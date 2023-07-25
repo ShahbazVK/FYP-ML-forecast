@@ -148,7 +148,7 @@ def recommend_item():
         print("Person not found in the dataset")
         return jsonify([])
 
-        
-app.run()
+# if __name__ == '__main__':
+#     app.run()
 
-serve(app, host="0.0.0.0", port=8080)
+serve(app, host="0.0.0.0", port=8000)
